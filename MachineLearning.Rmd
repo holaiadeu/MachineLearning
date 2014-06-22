@@ -1,0 +1,121 @@
+---
+title: "Machine Learning Algorithm for Weight Lifting Activity"
+output: html_document
+---
+
+## Executive Summary
+
+The aim of this document is to describe the machine learning algorithm that has been developed for the project assingment in the Coursera course *Practical Machine Learning*. The data corresponds to weight lifting activity data collected with different accelerometers from people performing different activities. The algorithm is supposed to predict the activity type based on the data on the different accelerometers. The purpose of the assignment is to apply such algorithm to a set of 20 test cases and to correctly predict as many activities as possible in those 20 cases.
+
+As it will be seen, a random forest algorithm has been developed and all the answers have been properly obtained. The document includes the reason for choosing this type of algorithm, the expected accuracy of the model, how this accuracy has been obtained, as well as an initial exploratory data analysis of the dataset, the data preprocessing and the results obtained with the model.
+
+## Data Description
+
+The data of this project collects data from accelerometers on the belt, forearm, arm and dumbell of 6 participants that were asked to perform weight lifts correctly and incorrectly in 5 different ways (more information is available from the website here: [http://groupware.les.inf.puc-rio.br/har]( http://groupware.les.inf.puc-rio.br/har)).
+
+The data consists of a training dataset (*pml-training.csv* file) and a testing dataset (*pml-testing.csv* file). The training dataset will be used to develop a machine learning model to predict the activity type in the testing dataset.
+
+## Exploratory Data Analysis
+
+The training dataset has the following dimensions and column names:
+
+```{r}
+training <- read.csv("pml-training.csv")
+dim(training)
+names(training)
+```
+
+while the testing dataset has the following dimensions:
+
+```{r}
+testing <- read.csv("pml-testing.csv")
+dim(testing)
+```
+
+and the only differences between both datasets in the column names are:
+
+```{r}
+union(setdiff(names(training),names(testing)),setdiff(names(testing),names(training)))
+```
+
+where *classe* is the activity type in the trainins set (not included in the testing set because it has to be predicted) and *problem_id* is the id of each row in the testing set corresponding to the 20 cases that has to be predicted in the Coursera course.
+
+The following histogram shows the distribution of activities within the training set. As it can be seen, although the data is not equally distributed, there are many observations for each activity type.
+
+```{r}
+plot(training$classe)
+```
+
+The first values of the training set are
+
+```{r}
+head(training)
+```
+
+It seems that some of the variables has blank values or *NA* values. As it can be seen in the summary of the data, many variables include a great proportion of *NA*, blank records or error values.
+
+```{r}
+summary(training)
+```
+
+## Data Cleaning
+
+Based on the results of the previous section, prior to developing the machine learning model, the data sets will be cleaning to obtain appropriate data to work on. For this reason, only those variables not containing *NA* or blank values will be considered in both datasets (the same variables have to be considered in both datasets in order to use the testing set to predict its activity values).
+
+After doing this, the number of variables is reduced to:
+
+```{r}
+useful <- sapply(training, function(x) !any(is.na(x)))
+training <- training[,useful]
+testing <- testing[,useful]
+useful <- sapply(training, function(x) !any(x==""))
+training <- training[,useful]
+testing <- testing[,useful]
+dim(training)
+```
+
+Additionally, for the purpose of this project the first 5 variables can also be removed as they only contain a row identifier, the name of the performer and timestamp values. For this reason, the final dataset that will be used to develop the machine learning dataset is:
+
+```{r}
+training <- training[,-(1:5)]
+testing <- testing[,-(1:5)]
+```
+
+Finally, the response variable (*classe*) will be converted to a factor variable and the *new_window* variable in the testing set will also be converted to a factor with 2 levels (to be consistent with the training set).
+
+```{r}
+training$classe <- as.factor(training$classe)
+testing$new_window = factor(testing$new_window,levels=c("yes","no"))
+```
+
+## Model Development
+
+A Random Forest model using the *caret* library has been fitted to the training data. Although it is a very time consuming model, it has been chosen because it is very accurate and the main objective of the model is to obtain the maximum accuracy in the testing set.
+
+The model has been developed using the training control method *oob* (out-of-basket method). This method is very useful in random forests because there is no need for cross-validation or a separate test set to get an unbiased estimate of the test set error. It is estimated internally, during the run...
+
+```{r cache=TRUE}
+library(caret)
+set.seed(1234)
+trControl <- trainControl(method="oob")
+modFit <- train(classe~.,data=training,trControl=trControl,method="rf")
+```
+
+The model that has been trainned is described below:
+
+```{r}
+print(modFit)
+```
+## Model Analysis
+
+As it can be seen in the model summary (shown in the previous section), the model has a very elevated accuracy (1). As a result of this, a 100% mark in the testing set should be expected.
+
+## Results and Conclusions
+
+When the fitted model is applied to the testing set, the following results are obtained:
+
+```{r}
+predict(modFit,testing)
+```
+
+Submitting them to the Coursera corresponding page, a 100% mark is obtained. This is consistent to the validation results obtained during the model development and completelly fulfills our expectations when selecting the model type.
